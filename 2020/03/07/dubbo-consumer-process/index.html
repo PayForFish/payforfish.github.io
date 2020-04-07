@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/sa.png?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="dubbo,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="dubbo架构架构上的一些解释：    API与SPI：API是提供给用户的接口，SPI(service provider interface)是提供给框架扩展者做具体实现的，一般设计原则上是要将两者分开，即用户API中感受不到拓展者SPI的具体实现方式。   左边是服务消费者使用的接口，右边是提供者，中间是共同使用。    dubbo的调用过程通过controller中debug发现，dubbo">
+<meta name="keywords" content="dubbo">
+<meta property="og:type" content="article">
+<meta property="og:title" content="dubbo consumer process">
+<meta property="og:url" content="http://yoursite.com/2020/03/07/dubbo-consumer-process/index.html">
+<meta property="og:site_name" content="Emitor&#39;s blog">
+<meta property="og:description" content="dubbo架构架构上的一些解释：    API与SPI：API是提供给用户的接口，SPI(service provider interface)是提供给框架扩展者做具体实现的，一般设计原则上是要将两者分开，即用户API中感受不到拓展者SPI的具体实现方式。   左边是服务消费者使用的接口，右边是提供者，中间是共同使用。    dubbo的调用过程通过controller中debug发现，dubbo">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="http://dubbo.apache.org/docs/zh-cn/dev/sources/images/dubbo-framework.jpg">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/599f23d81405c3a0e3e112492fe2bbc2508770933199cac07bdd7ceaaeaedd11d58254eb949e8aa58a583daf64e99270?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=1.png&size=750">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/5f4f062c3ebf95417640d47e237f4664c6054d776450dd1a7c92c02cb8a06ee76ad945ed3da890ec21fe70f02fb9dc94?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=2.png&size=750">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/a330a918f6721957cef513a8cb12cf284923bf31f5dd827f9566bc324dd4eb1a8e9aadda6a6a917d75967155c8ea8dea?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=3-9.png&size=750">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/a90099e92ecde87e92e63412714d5e97ca8b8cfb849c2dec26e8e9afa2b957538018e16df9c858cc809224c2ee89c8ed?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=4.png&size=750">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/7da9db2fb2e0a853641843741c7a93574488ad214238d40ce2903c34657e2fb066c979ba3caea8e2d5e91e9762ca6bcb?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=11.png&size=750">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/866708cecf65d0f79fca37bb0277393c9f7dba80531b25d3a2f624be6078247aa26322a7ed8cfbcfa7f21bb8559759f8?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=22.png&size=750">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/09ea6fc824ebc2d1980d6995705c5b60437e120bcf0deac07c321285095b134189f7aa21f343b72af659d62feabef305?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=13.png&size=750">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/f89b04dab273437ee232a68a90c84985fed833714035c601d455011f7a3fc105449b06f16da80aec725d4aefc70c78e8?pictype=scale&from=30013&version=3.3.3.3&uin=1084856844&fname=12.png&size=750">
+<meta property="og:updated_time" content="2020-04-07T08:09:00.675Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="dubbo consumer process">
+<meta name="twitter:description" content="dubbo架构架构上的一些解释：    API与SPI：API是提供给用户的接口，SPI(service provider interface)是提供给框架扩展者做具体实现的，一般设计原则上是要将两者分开，即用户API中感受不到拓展者SPI的具体实现方式。   左边是服务消费者使用的接口，右边是提供者，中间是共同使用。    dubbo的调用过程通过controller中debug发现，dubbo">
+<meta name="twitter:image" content="http://dubbo.apache.org/docs/zh-cn/dev/sources/images/dubbo-framework.jpg">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2020/03/07/dubbo-consumer-process/">
+
+
+
+
+
+  <title>dubbo consumer process | Emitor's blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Emitor's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/07/dubbo-consumer-process/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Emitor">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="https://avatars1.githubusercontent.com/u/19459779?s=460&v=4">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emitor's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">dubbo consumer process</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2020-03-07T16:07:35+08:00">
+                2020-03-07
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="dubbo架构"><a href="#dubbo架构" class="headerlink" title="dubbo架构"></a>dubbo架构</h1><p><img src="http://dubbo.apache.org/docs/zh-cn/dev/sources/images/dubbo-framework.jpg" alt><br>架构上的一些解释：  </p>
+<ul>
+<li>API与SPI：API是提供给用户的接口，SPI(service provider interface)是提供给框架扩展者做具体实现的，一般设计原则上是要将两者分开，即用户API中感受不到拓展者SPI的具体实现方式。  </li>
+<li>左边是服务消费者使用的接口，右边是提供者，中间是共同使用。  </li>
+</ul>
+<h1 id="dubbo的调用过程"><a href="#dubbo的调用过程" class="headerlink" title="dubbo的调用过程"></a>dubbo的调用过程</h1><p>通过controller中debug发现，dubbo对象的调用过程大致是这样：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@RestController</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">IConsumer</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Reference</span></span><br><span class="line">    <span class="keyword">private</span> IService iService;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@GetMapping</span>(<span class="string">"/test"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doTest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        iService.sayHello();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<a id="more"></a>
+<p>这里用@Refrence注解的iService其实在运行中是被代理的对象（代理模式），实际上代码执行到代理对象里去。而dubbo实现代理的方式也比较特别，不同于JDK动态代理和CGlib，而是使用javassist工具来生成代理类的字节码。不在本文讨论范畴。<br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/599f23d81405c3a0e3e112492fe2bbc2508770933199cac07bdd7ceaaeaedd11d58254eb949e8aa58a583daf64e99270?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=1.png&amp;size=750" alt><br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/5f4f062c3ebf95417640d47e237f4664c6054d776450dd1a7c92c02cb8a06ee76ad945ed3da890ec21fe70f02fb9dc94?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=2.png&amp;size=750" alt><br>代码中执行的是：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// class InvokerInvocationHandler implements InvocationHandler</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Object <span class="title">invoke</span><span class="params">(Object proxy, Method method, Object[] args)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">    String methodName = method.getName();</span><br><span class="line">    Class&lt;?&gt;[] parameterTypes = method.getParameterTypes();</span><br><span class="line">    <span class="keyword">if</span> (method.getDeclaringClass() == Object.class) &#123;</span><br><span class="line">        <span class="keyword">return</span> method.invoke(invoker, args);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (<span class="string">"toString"</span>.equals(methodName) &amp;&amp; parameterTypes.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> invoker.toString();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (<span class="string">"hashCode"</span>.equals(methodName) &amp;&amp; parameterTypes.length == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> invoker.hashCode();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (<span class="string">"equals"</span>.equals(methodName) &amp;&amp; parameterTypes.length == <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> invoker.equals(args[<span class="number">0</span>]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> invoker.invoke(<span class="keyword">new</span> RpcInvocation(method, args)).recreate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>结合上面dubbo架构图可知，这里是第三层架构：Proxy<br>接着代码走到：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// class MockClusterInvoker&lt;T&gt; implements Invoker&lt;T&gt;</span></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">    Result result = <span class="keyword">null</span>;</span><br><span class="line">    <span class="comment">// 这里的value其实是用来判断是否需要mock操作  </span></span><br><span class="line">    <span class="comment">// 在不依赖上下游服务的情况下完成自测时需要此操作</span></span><br><span class="line">    <span class="comment">// 判断的实现是通过服务名称后面的mock字段来判断的，个人觉得比较奇怪</span></span><br><span class="line">    String value = directory.getUrl().getMethodParameter(invocation.getMethodName(),</span><br><span class="line">    Constants.MOCK_KEY, Boolean.FALSE.toString()).trim();</span><br><span class="line">    <span class="keyword">if</span> (value.length() == <span class="number">0</span> || value.equalsIgnoreCase(<span class="string">"false"</span>)) &#123;</span><br><span class="line">        <span class="comment">// no mock</span></span><br><span class="line">        <span class="comment">// 这里只关心不需要mock时的调用逻辑  </span></span><br><span class="line">        result = <span class="keyword">this</span>.invoker.invoke(invocation);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (value.startsWith(<span class="string">"force"</span>)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (logger.isWarnEnabled()) &#123;</span><br><span class="line">            logger.info(<span class="string">"force-mock: "</span> + invocation.getMethodName() + <span class="string">" force-mock enabled , url : "</span> + directory.getUrl());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//force:direct mock</span></span><br><span class="line">        result = doMockInvoke(invocation, <span class="keyword">null</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">//fail-mock</span></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            result = <span class="keyword">this</span>.invoker.invoke(invocation);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (RpcException e) &#123;</span><br><span class="line">            <span class="keyword">if</span> (e.isBiz()) &#123;</span><br><span class="line">                <span class="keyword">throw</span> e;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> (logger.isWarnEnabled()) &#123;</span><br><span class="line">                    logger.warn(<span class="string">"fail-mock: "</span> + invocation.getMethodName() + <span class="string">" fail-mock enabled , url : "</span> + directory.getUrl(), e);</span><br><span class="line">                &#125;</span><br><span class="line">                result = doMockInvoke(invocation, e);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面的invoker实例其实是dubbo缺省配置下的默认invoker-FailoverClusterInvoker实现。<br>代码会先进入FailoverClusterInvoker父类的AbstractClusterInvoker中，封装类loadBanlance等逻辑后执行抽象方法doInvoke()然后进入FailoverClusterInvoker实现的doInvoke()中：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 这是默认的dubbo集群容错逻辑实现</span></span><br><span class="line"><span class="comment">// class FailoverClusterInvoker&lt;T&gt; extends AbstractClusterInvoker&lt;T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Result <span class="title">doInvoke</span><span class="params">(Invocation invocation, <span class="keyword">final</span> List&lt;Invoker&lt;T&gt;&gt; invokers,LoadBalance loadbalance)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">    List&lt;Invoker&lt;T&gt;&gt; copyinvokers = invokers;</span><br><span class="line">    checkInvokers(copyinvokers, invocation);</span><br><span class="line">    <span class="comment">// 这里是尝试获取配置的重试次数，默认是2+1=3次</span></span><br><span class="line">    <span class="comment">// getMethodParameter方法是用来尝试在URL（调用具体实现逻辑中的顶级接口Node的成员域）</span></span><br><span class="line">    <span class="comment">// 中，把URL的？后面的参数a=b做a -&gt; b的map映射，然后在这里尝试根据</span></span><br><span class="line">    <span class="comment">// 服务名来看是否有配置的尝试次数。这也是URL的在dubbo中的一个重要作用，</span></span><br><span class="line">    <span class="comment">// 这个map在很多地方都会用到，通过暴露的URL来携带很多配置参数从而来使用</span></span><br><span class="line">    <span class="keyword">int</span> len = getUrl().getMethodParameter(invocation.getMethodName(),</span><br><span class="line">    Constants.RETRIES_KEY, Constants.DEFAULT_RETRIES) + <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (len &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">        len = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// retry loop.</span></span><br><span class="line">    RpcException le = <span class="keyword">null</span>; <span class="comment">// last exception.</span></span><br><span class="line">    List&lt;Invoker&lt;T&gt;&gt; invoked = <span class="keyword">new</span> ArrayList&lt;Invoker&lt;T&gt;&gt;(copyinvokers.size()); <span class="comment">//invoked invokers.</span></span><br><span class="line">    Set&lt;String&gt; providers = <span class="keyword">new</span> HashSet&lt;String&gt;(len);</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; len; i++) &#123;</span><br><span class="line">        <span class="comment">//Reselect before retry to avoid a change of candidate `invokers`.</span></span><br><span class="line">        <span class="comment">//<span class="doctag">NOTE:</span> if `invokers` changed, then `invoked` also lose accuracy.</span></span><br><span class="line">        <span class="keyword">if</span> (i &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            checkWhetherDestroyed();</span><br><span class="line">            copyinvokers = list(invocation);</span><br><span class="line">            <span class="comment">// check again</span></span><br><span class="line">            checkInvokers(copyinvokers, invocation);</span><br><span class="line">        &#125;</span><br><span class="line">        Invoker&lt;T&gt; invoker = select(loadbalance, invocation, copyinvokers,invoked);</span><br><span class="line">        invoked.add(invoker);</span><br><span class="line">        RpcContext.getContext().setInvokers((List) invoked);</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Result result = invoker.invoke(invocation);</span><br><span class="line">            <span class="keyword">if</span> (le != <span class="keyword">null</span> &amp;&amp; logger.isWarnEnabled()) &#123;</span><br><span class="line">                logger.warn(<span class="string">"..."</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (RpcException e) &#123;</span><br><span class="line">            <span class="keyword">if</span> (e.isBiz()) &#123; <span class="comment">// biz exception.</span></span><br><span class="line">                <span class="keyword">throw</span> e;</span><br><span class="line">            &#125;</span><br><span class="line">            le = e;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">            le = <span class="keyword">new</span> RpcException(e.getMessage(), e);</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            providers.add(invoker.getUrl().getAddress());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"..."</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面的URL中parameters成员变量构造，会将完整的URL构造成这样：<br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/a330a918f6721957cef513a8cb12cf284923bf31f5dd827f9566bc324dd4eb1a8e9aadda6a6a917d75967155c8ea8dea?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=3-9.png&amp;size=750" alt><br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/a90099e92ecde87e92e63412714d5e97ca8b8cfb849c2dec26e8e9afa2b957538018e16df9c858cc809224c2ee89c8ed?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=4.png&amp;size=750" alt><br>这样所有的配置信息，就放在URL中去了，简单有效。所以这个URL是invoker顶级接口Node中的成员变量，很重要。<br>注意，在第一步中的invoke中，InvokerInvocationHandler中Invoker就是MockClusterInvoker，这个类比较特殊。它既实现了Invoker接口，内部还有Invoker成员依赖，还有Directory依赖。而dubbo通过SPI技术，将内部Invoker依赖实现为FailoverClusterInvoker，Directory实现为RegistryDirectory。上面一步的代码走到的是RegistryDirectory静态内部类。<br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/7da9db2fb2e0a853641843741c7a93574488ad214238d40ce2903c34657e2fb066c979ba3caea8e2d5e91e9762ca6bcb?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=11.png&amp;size=750" alt><br>方法进而进入InvokerWrapper的invoker()中，然后dubbo又通过SPI技术，将执行两个绑定的wrapper类。<br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/866708cecf65d0f79fca37bb0277393c9f7dba80531b25d3a2f624be6078247aa26322a7ed8cfbcfa7f21bb8559759f8?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=22.png&amp;size=750" alt><br>上面的配置文件将这两个实现类绑定到执行流程，而ProtocolListenerWrapper内部refer()中返回的就是ListenerInvokerWrapper。至此，ListenerInvokerWrapper和ProtocolFilterWrapper被dubbo“注入”到运行流程中，而在debug中是断不到这里的字节码生成的具体类的，所以代码会直接进入这两个类进行执行。就是下面的代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// class InvokerWrapper&lt;T&gt; implements Invoker&lt;T&gt;</span></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> invoker.invoke(invocation);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ListenerInvokerWrapper&lt;T&gt; implements Invoker&lt;T&gt;</span></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> invoker.invoke(invocation);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ProtocolFilterWrapper implements Protocol</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> &lt;T&gt; <span class="function">Invoker&lt;T&gt; <span class="title">buildInvokerChain</span><span class="params">(<span class="keyword">final</span> Invoker&lt;T&gt; invoker, String key, String group)</span> </span>&#123;</span><br><span class="line">    Invoker&lt;T&gt; last = invoker;</span><br><span class="line">    List&lt;Filter&gt; filters = ExtensionLoader.getExtensionLoader(Filter.class).getActivateExtension(invoker.getUrl(), key, group);</span><br><span class="line">    <span class="keyword">if</span> (!filters.isEmpty()) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = filters.size() - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">            <span class="keyword">final</span> Filter filter = filters.get(i);</span><br><span class="line">            <span class="keyword">final</span> Invoker&lt;T&gt; next = last;</span><br><span class="line">            last = <span class="keyword">new</span> Invoker&lt;T&gt;() &#123;</span><br><span class="line"></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> Class&lt;T&gt; <span class="title">getInterface</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                    <span class="keyword">return</span> invoker.getInterface();</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> URL <span class="title">getUrl</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                    <span class="keyword">return</span> invoker.getUrl();</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">isAvailable</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                    <span class="keyword">return</span> invoker.isAvailable();</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invocation invocation)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">                    <span class="keyword">return</span> filter.invoke(next, invocation);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">destroy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                    invoker.destroy();</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> String <span class="title">toString</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                    <span class="keyword">return</span> invoker.toString();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> last;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面两个wrapper的执行就是包装模式的使用。只是包装的过程被字节码技术封装了。<br>另外，这个wapper真正被初始化是在dubbo启动刷新的时候，或者说每次执行RegistryDirectoru类中的refreshInvoker()方法时，会通过SPI将配置中的Protocol与服务URL进行构造组合，缓存到map中。<br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/09ea6fc824ebc2d1980d6995705c5b60437e120bcf0deac07c321285095b134189f7aa21f343b72af659d62feabef305?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=13.png&amp;size=750" alt><br>这就是这个缓存map具体的构造。因此在一开始，InvokerInvocationHandler里的Invoker就有了相关实现注入。</p>
+<p>继续关注上面的执行filter代码，进入配置文件<br><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/f89b04dab273437ee232a68a90c84985fed833714035c601d455011f7a3fc105449b06f16da80aec725d4aefc70c78e8?pictype=scale&amp;from=30013&amp;version=3.3.3.3&amp;uin=1084856844&amp;fname=12.png&amp;size=750" alt><br>上面debug后，filter一共执行了这三个。<br>然后就是AbstractInvoker和DubboInvoker的执行了。先进入父类AbstractInvoker执行invoke然后进入子类实现父类的抽象方法执行doInvoke：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// abstract class AbstractInvoker&lt;T&gt; implements Invoker&lt;T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Result <span class="title">invoke</span><span class="params">(Invocation inv)</span> <span class="keyword">throws</span> RpcException </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (destroyed.get()) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(<span class="string">"Rpc invoker for service "</span> + <span class="keyword">this</span> + <span class="string">" on consumer "</span> + NetUtils.getLocalHost()</span><br><span class="line">                + <span class="string">" use dubbo version "</span> + Version.getVersion()</span><br><span class="line">                + <span class="string">" is DESTROYED, can not be invoked any more!"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    RpcInvocation invocation = (RpcInvocation) inv;</span><br><span class="line">    invocation.setInvoker(<span class="keyword">this</span>);</span><br><span class="line">    <span class="keyword">if</span> (attachment != <span class="keyword">null</span> &amp;&amp; attachment.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        invocation.addAttachmentsIfAbsent(attachment);</span><br><span class="line">    &#125;</span><br><span class="line">    Map&lt;String, String&gt; context = RpcContext.getContext().getAttachments();</span><br><span class="line">    <span class="keyword">if</span> (context != <span class="keyword">null</span>) &#123;</span><br><span class="line">        invocation.addAttachmentsIfAbsent(context);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (getUrl().getMethodParameter(invocation.getMethodName(), Constants.ASYNC_KEY, <span class="keyword">false</span>)) &#123;</span><br><span class="line">        invocation.setAttachment(Constants.ASYNC_KEY, Boolean.TRUE.toString());</span><br><span class="line">    &#125;</span><br><span class="line">    RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> doInvoke(invocation);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (InvocationTargetException e) &#123; <span class="comment">// biz exception</span></span><br><span class="line">        Throwable te = e.getTargetException();</span><br><span class="line">        <span class="keyword">if</span> (te == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(e);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (te <span class="keyword">instanceof</span> RpcException) &#123;</span><br><span class="line">                ((RpcException) te).setCode(RpcException.BIZ_EXCEPTION);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(te);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (RpcException e) &#123;</span><br><span class="line">        <span class="keyword">if</span> (e.isBiz()) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(e);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">throw</span> e;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> RpcResult(e);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// class DubboInvoker&lt;T&gt; extends AbstractInvoker&lt;T&gt;</span></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> Result <span class="title">doInvoke</span><span class="params">(<span class="keyword">final</span> Invocation invocation)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">    RpcInvocation inv = (RpcInvocation) invocation;</span><br><span class="line">    <span class="keyword">final</span> String methodName = RpcUtils.getMethodName(invocation);</span><br><span class="line">    inv.setAttachment(Constants.PATH_KEY, getUrl().getPath());</span><br><span class="line">    inv.setAttachment(Constants.VERSION_KEY, version);</span><br><span class="line"></span><br><span class="line">    ExchangeClient currentClient;</span><br><span class="line">    <span class="keyword">if</span> (clients.length == <span class="number">1</span>) &#123;</span><br><span class="line">        currentClient = clients[<span class="number">0</span>];</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        currentClient = clients[index.getAndIncrement() % clients.length];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">boolean</span> isAsync = RpcUtils.isAsync(getUrl(), invocation);</span><br><span class="line">        <span class="keyword">boolean</span> isOneway = RpcUtils.isOneway(getUrl(), invocation);</span><br><span class="line">        <span class="keyword">int</span> timeout = getUrl().getMethodParameter(methodName, Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);</span><br><span class="line">        <span class="keyword">if</span> (isOneway) &#123;</span><br><span class="line">            <span class="keyword">boolean</span> isSent = getUrl().getMethodParameter(methodName, Constants.SENT_KEY, <span class="keyword">false</span>);</span><br><span class="line">            currentClient.send(inv, isSent);</span><br><span class="line">            RpcContext.getContext().setFuture(<span class="keyword">null</span>);</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult();</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (isAsync) &#123;</span><br><span class="line">            ResponseFuture future = currentClient.request(inv, timeout);</span><br><span class="line">            RpcContext.getContext().setFuture(<span class="keyword">new</span> FutureAdapter&lt;Object&gt;(future));</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> RpcResult();</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            RpcContext.getContext().setFuture(<span class="keyword">null</span>);</span><br><span class="line">            <span class="keyword">return</span> (Result) currentClient.request(inv, timeout).get();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (TimeoutException e) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(RpcException.TIMEOUT_EXCEPTION, <span class="string">"Invoke remote method timeout. method: "</span> + invocation.getMethodName() + <span class="string">", provider: "</span> + getUrl() + <span class="string">", cause: "</span> + e.getMessage(), e);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (RemotingException e) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> RpcException(RpcException.NETWORK_EXCEPTION, <span class="string">"Failed to invoke remote method: "</span> + invocation.getMethodName() + <span class="string">", provider: "</span> + getUrl() + <span class="string">", cause: "</span> + e.getMessage(), e);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>至此，consumer的RPC的6层架构逻辑全部结束，往后进入consumer的Remoting阶段，由Exchange开始，进行序列化和远端传送阶段，底层是Netty模型，这一步就不具体分析了，应该属于网络编程和netty的逻辑。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>感谢充值: )</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>Donate</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/money.png" alt="Emitor WeChat Pay">
+        <p>WeChat Pay</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/dubbo/" rel="tag"># dubbo</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/02/03/研究springboot处理web请求流程/" rel="next" title="研究springboot处理web请求流程">
+                <i class="fa fa-chevron-left"></i> 研究springboot处理web请求流程
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="https://avatars1.githubusercontent.com/u/19459779?s=460&v=4" alt="Emitor">
+            
+              <p class="site-author-name" itemprop="name">Emitor</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">tags</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#dubbo架构"><span class="nav-number">1.</span> <span class="nav-text">dubbo架构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#dubbo的调用过程"><span class="nav-number">2.</span> <span class="nav-text">dubbo的调用过程</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Emitor</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
