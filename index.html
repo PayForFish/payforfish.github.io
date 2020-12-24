@@ -229,7 +229,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/24/研究redis-shake/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/05/24/研究redis-shake工具/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Emitor">
@@ -248,7 +248,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/2020/05/24/研究redis-shake/" itemprop="url">研究redis-shake</a></h1>
+                <a class="post-title-link" href="/2020/05/24/研究redis-shake工具/" itemprop="url">研究redis-shake</a></h1>
         
 
         <div class="post-meta">
@@ -299,8 +299,7 @@
 
       
         
-          
-            <h1 id="redis-shake工具指北"><a href="#redis-shake工具指北" class="headerlink" title="redis-shake工具指北"></a>redis-shake工具指北</h1><p><strong>使用阿里开源redis-shake进行redis备份等操作</strong></p>
+          <h1 id="redis-shake工具指北"><a href="#redis-shake工具指北" class="headerlink" title="redis-shake工具指北"></a>redis-shake工具指北</h1><p><strong>使用阿里开源redis-shake进行redis备份等操作</strong></p>
 <ol>
 <li>redis-shake源码使用golang编写，下载二进制包：</li>
 </ol>
@@ -314,37 +313,17 @@
 <p>tar -zxvf </p>
 </blockquote>
 <ol start="3">
-<li>现在使用redis-shake进行备份转储，先对源redis库进行备份 ：<br><-- more --><br>修改配置文件</--></li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">source.type: standalone</span><br><span class="line">source.address: 10.1.1.1:20441</span><br><span class="line">source.password_raw: 12345</span><br></pre></td></tr></table></figure>
-<p>上面为单节点redis的备份配置模式standalone</p>
-<p>然后执行：</p>
-<blockquote>
-<p>./redis-shake.linux -conf=redis-shake.conf -type=dump</p>
-</blockquote>
-<p>进行全量备份，使用默认配置会在当前目录下生产local_dump.0的备份文件  </p>
-<ol start="4">
-<li>转储</li>
-</ol>
-<p>修改配置文件：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">target.type: standalone</span><br><span class="line">target.address: 10.1.1.1:20551</span><br><span class="line">target.password_raw: 12345</span><br><span class="line">source.rdb.input = local_dump.0</span><br><span class="line">target.db = 1</span><br><span class="line">key_exists = rewrite</span><br></pre></td></tr></table></figure>
-<p>开始进行转储, target.db配置成想要转储的目标库; key_exists修改为覆盖原有  </p>
-<ol start="5">
-<li>到目标redis查看：</li>
-</ol>
-<blockquote>
-<p>redis.cli -h 127.0.0.1 -p 6379</p>
-<p>ping # 打印pong代表redis启动成功 </p>
-<p>select 1 # 选取上面备份至的数据库</p>
-<p>dbsize  # 打印integet大小查看当前key数 代表转储成功  </p>
-</blockquote>
-<p><strong>上面的备份转储将源redis的所有db全部转储到目标redis的target.db上，要实现1对1的精准转储可以配合使用filter.db.whitelist = 配置来一个一个库转储</strong></p>
-<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">#  ./redis-shake.linux -conf=redis-shake.conf -type=sync</span></span><br><span class="line">同步机制，无需生成dump文件等操作  </span><br><span class="line"><span class="section"># filter.db.whitelist= 0 </span></span><br><span class="line"><span class="section"># target.db = 0</span></span><br><span class="line">添加上述配置，使得1-1的精准同步</span><br></pre></td></tr></table></figure>
-
-          
+<li>现在使用redis-shake进行备份转储，先对源redis库进行备份 ：
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2020/05/24/研究redis-shake工具/#more" rel="contents">
+              Read more &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
-    </div>
+    </li></ol></div>
     
     
     
