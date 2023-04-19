@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/sa.png?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Java,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="研究JMMbalabala  最近在看JUC代码实现的时候，对某些代码的写法感到困惑。无独有偶，最近又看了另一本讲并发编程的书(不是Java并发编程实战)。结合一些对并发编程大师Doug Lea的具体代码实现，注意到一些之前从未考虑过问题与细节，那是一些在现实工作中可能一时半会都不会留意到的东西。   这不是实在的并发编程教程，只是做一些思考的记录。  聊聊JMMJMM(Java Memory M">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="研究JMM">
+<meta property="og:url" content="http://yoursite.com/2022/01/13/JMM-research/index.html">
+<meta property="og:site_name" content="Emitor&#39;s blog">
+<meta property="og:description" content="研究JMMbalabala  最近在看JUC代码实现的时候，对某些代码的写法感到困惑。无独有偶，最近又看了另一本讲并发编程的书(不是Java并发编程实战)。结合一些对并发编程大师Doug Lea的具体代码实现，注意到一些之前从未考虑过问题与细节，那是一些在现实工作中可能一时半会都不会留意到的东西。   这不是实在的并发编程教程，只是做一些思考的记录。  聊聊JMMJMM(Java Memory M">
+<meta property="og:locale" content="default">
+<meta property="og:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/ce87ae39d66f9c7c1ef32b8796c4cbbcc15cb551d2e913bd809b5f7aca30d7971b296d3a04ed19c2bd080ad8b09ac270?pictype=scale&from=30013&version=3.3.3.3&fname=Snipaste_2023-04-19_23-18-21.jpg&size=750">
+<meta property="og:updated_time" content="2023-04-19T15:21:05.494Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="研究JMM">
+<meta name="twitter:description" content="研究JMMbalabala  最近在看JUC代码实现的时候，对某些代码的写法感到困惑。无独有偶，最近又看了另一本讲并发编程的书(不是Java并发编程实战)。结合一些对并发编程大师Doug Lea的具体代码实现，注意到一些之前从未考虑过问题与细节，那是一些在现实工作中可能一时半会都不会留意到的东西。   这不是实在的并发编程教程，只是做一些思考的记录。  聊聊JMMJMM(Java Memory M">
+<meta name="twitter:image" content="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/ce87ae39d66f9c7c1ef32b8796c4cbbcc15cb551d2e913bd809b5f7aca30d7971b296d3a04ed19c2bd080ad8b09ac270?pictype=scale&from=30013&version=3.3.3.3&fname=Snipaste_2023-04-19_23-18-21.jpg&size=750">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2022/01/13/JMM-research/">
+
+
+
+
+
+  <title>研究JMM | Emitor's blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Emitor's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2022/01/13/JMM-research/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Emitor">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="https://avatars1.githubusercontent.com/u/19459779?s=460&v=4">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emitor's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">研究JMM</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2022-01-13T15:48:04+08:00">
+                2022-01-13
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="研究JMM"><a href="#研究JMM" class="headerlink" title="研究JMM"></a>研究JMM</h1><h3 id="balabala"><a href="#balabala" class="headerlink" title="balabala"></a>balabala</h3><p>  最近在看JUC代码实现的时候，对某些代码的写法感到困惑。无独有偶，最近又看了另一本讲并发编程的书(不是Java并发编程实战)。结合一些对并发编程大师Doug Lea的具体代码实现，注意到一些之前从未考虑过问题与细节，那是一些在现实工作中可能一时半会都不会留意到的东西。</p>
+<p>  这不是实在的并发编程教程，只是做一些思考的记录。</p>
+<hr>
+<h3 id="聊聊JMM"><a href="#聊聊JMM" class="headerlink" title="聊聊JMM"></a>聊聊JMM</h3><p>JMM(Java Memory Model)是理解Java并发编程最细节部分的基石。它既有JVM视角的抽象，为我们理解JVM行为提供了基础的切口；也有程序员视角的抽象，它让我们从具体细节的泥潭中挣脱出来，使用JMM提供的基础语义保证，判断和确定在并发下程序会表现出的行为。</p>
+<a id="more"></a>
+<p><img src="https://picabstract-preview-ftn.weiyun.com/ftn_pic_abs_v3/ce87ae39d66f9c7c1ef32b8796c4cbbcc15cb551d2e913bd809b5f7aca30d7971b296d3a04ed19c2bd080ad8b09ac270?pictype=scale&from=30013&version=3.3.3.3&fname=Snipaste_2023-04-19_23-18-21.jpg&size=750" alt="JMM" style="zoom:67%;"></p>
+<p>JVM下的多线程“使用共享内存来通信”，它的确有其在同步内存上的心智负担。因为在编程语言背后，CPU如何使用内存，内存主线的行为方式等，都需要编程语言进行一定的屏蔽，而在一定程度上无法进行屏蔽的东西，自然会抛在处于前端的程序员面前。  </p>
+<p>而当红炸子鸡Go语言中的“使用通信来共享内存”，确实又是个值得深究的计算机程序抽象设计哲学。可惜这不在Java的并发编程的讨论范畴。</p>
+<hr>
+<h3 id="重排序"><a href="#重排序" class="headerlink" title="重排序"></a>重排序</h3><p>new Javaer容易被重排序的定义困惑到：为什么需要重排序？我写的代码还会好好运行吗？还能不能好好写代码了。  </p>
+<p>关于重排序的定义以及示例属于老生常谈不需要过多着墨，究其原因其实就是为了效率。为了效率，编程语言之间也会非常“内卷”，为了一些优化或者运行时速度，JVM规范制定者也允许JVM实现者对某些角度的语言特性进行“去假设”，而这种会带来“反直觉”的弊端确实也是语言设计者门为了效率做出的让步。首先，让我们放下对现代编程语言的封装带来的“编程其实很简单”这种错觉，并开始承认其实真正意义上的程序设计，不仅需要大量的知识储备，还需要一点“计算机直觉”，要很好地做到这些并不容易。</p>
+<p>重排序会把某些“high-level”的代码揉碎，进行重新优化编排，然后翻译成机器码进行真正的执行，这些优化在平台相关的架构下，比如拆分成多个CPU指令分发到不同的电路单元进行执行效率会更高。所以为什么要重排序？这需要一点点”low-level”的视角。</p>
+<p>编程语言设计者当然不会允许这种语言级别的优化，过分加重程序员的心智负担。因此这就引出了另一个概念–<strong>as-if-serial</strong>。“看起来串行”保证基本的代码语义不会被打乱，需要注意的是JMM保证的是单线程下的看起来串行。因此，一段基本的代码中，不用担心重排序带来的潜在BUG，比如a++, b+=a里，b一定会把a++的影响带进去（编译器和运行时会保证这一点），但不能忽略的是“单线程下的看起来串行”这一点，若不然容易不小心带入在并发情况下的内存语义。在推导多线程下的内存行为时，带入这种只在单线程下有效的JMM语义，就会掉入陷阱，毕竟多线程下是另一回事。还好设计者们提供了一些工具来帮开发者处理这些问题，不过这些基本工具的使用需要一点点经验和技巧。</p>
+<hr>
+<h3 id="volatile"><a href="#volatile" class="headerlink" title="volatile"></a>volatile</h3><p>单词volatile有挥发的意思，传神地表达出被volatile关键字定义的变量所具有的特性–<strong>可见性</strong>。可见性的含义很简单：多线程中volatile变量被修改时，对该变量操作的影响对其他线程是可见的。这里的表述值得关注的是：1. 变量操作的影响；2. 可见的。</p>
+<p>如果把概念拓展的更宽泛一些，会明白其实这里的“影响”实际上不光光是该volatile变量本身的变化，还附带着其本身修改在JMM语义–“先行发生原则”–中传递性带来的内存可见保证。至于“可见的”这个描述，其指代的实则是CPU在和真实内存进行的一系列交互操作后，在使用该变量时已经获取到该变量操作所带来的内存语义影响。这个表达有些拗口，可略微延伸“可见”的概念实际上对于我们理解“可见性”具有一定的帮助，因为真实的“可见性”并不是一个简单的JVM与生俱来的特性，而是由JMM内存语义保证带来的一系列操作的结果，“可见”仅仅是这个结果的一个概括性描述。下面聊聊“先行发生”原则。</p>
+<hr>
+<h3 id="happens-before"><a href="#happens-before" class="headerlink" title="happens-before"></a>happens-before</h3><p>happens-before最早由分布式系统大师–Lamport–于1978年在一篇关于分布式系统中如何定义事件(Event)之间关系次序(Ordering)的论文中首先被提出，这篇论文后来成为分布式系统中最具影响力的论文之一。Lamport最先提出了“逻辑时钟”的概念，意在解决：假如我们难以在绝对时值上对分布式系统中不同节点事件的先后顺序进行定义(这的确很难实现)，那我们就使用一个逻辑上的“时钟”，它可以按照消息的方式去定义两个事件的偏序关系，因为发送方一定是“因”，接收方一定是“果”，因此不难定义这两个事件的逻辑关系(因 happens-before 果)。然后在全局的事件上附带进程编号，人为地为这些进程编号进行优先级排序，从而得到完整的事件全序关系。至于这个分布式系统中事件集合的全序关系为何这么重要，先不做过多的讨论。</p>
+<p>我们关注这里的happens-before，它被JVM引用过来定义单个JVM进程中不同线程操作之间的一种偏序关系。延伸到分布式中的happens-before，就是方便这里清晰一个概念：happens-before并不是前提，而是中间结果。比如类似这种表达：“若A happens-before B 则……”，实则是在说：“因为某个前提被满足，所以 A happens-before B，因此……”。JVM规定，在且仅在满足某些前提下，两个操作之间就具有happens-before规则，然后JVM会针对满足happens-before规则的代码提供额外的JMM语义。这些前提有：</p>
+<p> JSR-133 在2004年发布定义的 happens-before 规则（至今未修订，新增过）：</p>
+<ol>
+<li>程序的顺序性规则：对于一个线程，它的每个操作都是按照程序代码的顺序依次执行的，即如果操作A在操作B之前，那么操作A <strong>happens-before</strong> 操作B</li>
+<li>volatile 变量规则：对一个 volatile 变量的写操作 <strong>happens-before</strong> 于后续（绝对时间上）对该变量的读操作。</li>
+<li>锁规则：对一个锁的解锁操作 <strong>happens-before</strong> 于该锁的加锁操作。</li>
+<li>传递性规则：如果操作 A <strong>happens-before</strong> 操作 B，操作 B <strong>happens-before</strong> 操作 C，则操作 A <strong>happens-before</strong> 操作 C。</li>
+<li>start() 规则：如果线程 A 执行了线程 B 的 start() 方法，那么线程 A 中的操作 <strong>happens-before</strong> 于线程 B 中的任意操作。</li>
+<li>join() 规则：如果线程 A 执行了线程 B 的 join() 方法，并成功返回，那么线程 B 中的所有操作 <strong>happens-before</strong> 于线程 A 的 join() 方法返回。</li>
+<li>中断规则：如果线程 A 调用了线程 B 的 interrupt() 方法，那么线程 A 中的操作 <strong>happens-before</strong> 于线程 B 中检测到中断事件的操作。</li>
+</ol>
+<p>JVM实现规范里这么定义happens-before必须有的JMM语义，也就是happens-before最终的“结果”：</p>
+<ol>
+<li>若A happens-before B，则A操作结果对B操作可见，且A操作执行顺序在B之前</li>
+<li>允许JVM实现对1中语义保持的情况下进行优化(重排序合法)</li>
+</ol>
+<p>以上1的可见性不难理解，而A操作先执行意味着若A happens-before B原则被满足，则A必须先于B执行，结合规则2，则延伸为JVM实现者可以优化重排序，但要保证程序员看到一个幻象：A先执行了！和as-if-serial语义如出一辙。</p>
+<hr>
+<h3 id="串联一下"><a href="#串联一下" class="headerlink" title="串联一下"></a>串联一下</h3><p>值得注意也最重要的是，关于volatile变量的<strong>happens-before</strong>规则定义。它在某种程度上，还提供了一种内存一致性视图的含义，我们可以结合具体的代码串联一下这些定义与规则。比如下面的代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> a = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">int</span> b = <span class="number">1</span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  b = <span class="number">10</span>; <span class="comment">// 1</span></span><br><span class="line">  a = <span class="number">20</span>; <span class="comment">// 2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bar</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">int</span> tmpA = a; <span class="comment">// 3</span></span><br><span class="line">  <span class="keyword">int</span> tmpB = b; <span class="comment">// 4</span></span><br><span class="line">  System.out.println(tmpA + <span class="string">" -- "</span> + tmpB)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>假若A线程先执行了foo()并且完成2处的代码执行(volatile 变量a写完成),  然后B线程执行bar() ，那么控制台打印的将是什么呢？我们根据happens-before的前提和规则来推导一下：</p>
+<p><strong>happens-before</strong>： 由于单线程内顺序性，操作1 happens-before 2，操作3 happens-before 操作4；再由volatile变量的happens-before前提：操作3 happens-before 2；再由happens-before的传递性可知：操作1happens-before操作4。由此，操作1的结果操作4可知，所以tmpB一定是10而不是初始值1。</p>
+<p>上面的推导过程有一个容易忽视的前提：线程A执行完成后线程B再执行。这里使用代码模拟可以使用线程同步手段，但这将引入其他的happens-before规则进行干扰。不过我们只考虑理论层面，问这里打印什么数字？我们推导答案是“20 – 10”就有了理论依据，而不是凭直觉，因为我们知道JMM的模式是线程使用工作内存，所以理论上我们不知道普通变量何时会从主存中刷新最新的值，因此上面的代码中打印结果理论上就无法断言出准确结果。比如把a变量的volatile关键字去掉，其实这里就无法有理论上的标准答案。</p>
+<p>那为什么提到volatile变量提供了一种内存一致性视图？原因就是这里因为根据happens-before推导，bar()中tmpA和tmpB的值一定同时刷新了内存最新的值，他们要么都是旧值1，要么是最新的内存值10,20。</p>
+<p>不过实际场景下，这个内存一致性视图并不会有太多作用，因为真实的情况是：我们无法保证多线程情况下foo()一定比bar()先执行，除非使用同步方法。而在使用了同步方法后，我们一般都会凭直觉知道bar()中读取的就是最新的值，这由synchronized关键字的happens-before提供。</p>
+<p><strong>指令重排</strong>：在多线程下，指令重排带来了什么影响？网上很容易看到的禁不起推敲的举例类似：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 线程A：</span></span><br><span class="line">flag = <span class="keyword">true</span>;</span><br><span class="line">x = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 线程B：</span></span><br><span class="line"><span class="keyword">if</span> (flag) &#123;</span><br><span class="line">    y = x + <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line">在单线程环境下，无论flag的值是什么，线程B都会按照预期的方式执行，即将x的值加<span class="number">1</span>，并将结果赋给y。但是在多线程环境下，由于指令重排的存在，可能会出现下面的情况：</span><br><span class="line"></span><br><span class="line">线程A将flag设置为<span class="keyword">true</span>。</span><br><span class="line">线程B读取flag的值为<span class="keyword">true</span>，执行<span class="keyword">if</span>语句。</span><br><span class="line">由于指令重排的存在，线程B的<span class="keyword">if</span>语句可能会被重排到线程A的x = <span class="number">1</span>之前执行。</span><br><span class="line">线程B读取x的值，由于x尚未被线程A设置为<span class="number">1</span>，因此y的值为<span class="number">2</span>，而不是我们预期的<span class="number">1</span>。</span><br><span class="line">这种情况下，由于指令重排的存在，程序的输出结果不是我们预期的，因此产生了错误。如果在flag上使用<span class="keyword">volatile</span>关键字，就可以禁止编译器或CPU对flag的指令重排，从而避免这种错误的发生。</span><br></pre></td></tr></table></figure>
+<p>其实，多线程下关注指令重排的影响是一个容易掉入的陷阱：</p>
+<p>上面的代码如果不进行同步，线程A和B在并发下是无法知道执行顺序和交叉程度的；另外，指望volatile带来的禁止指令重排给多线程同步带来一定的作用，这从根本上就是有问题的。因为volatile从设计上只关注JMM语义，即可见性问题。跳脱出可见性讨论它在多线程下的作用，方向错误，怎么走也没用。</p>
+<p>那我们如何正确理解多线程下volatile对禁止指令重排对程序的积极作用呢。经典的示例是双重检查加载单例模式：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Singleton</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Singleton instance = <span class="keyword">null</span>; </span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">Singleton</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Singleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="keyword">if</span>(instacne == <span class="keyword">null</span>) &#123; <span class="comment">// 第一次check</span></span><br><span class="line">        <span class="keyword">synchronized</span>(Singleton.class) &#123;</span><br><span class="line">          <span class="keyword">if</span> (instance == <span class="keyword">null</span>) &#123;</span><br><span class="line">            instance = <span class="keyword">new</span> Singleton(); <span class="comment">// 1 第二次check</span></span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> instance;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>乍一看上面的代码没有什么问题，可问题就出在操作1处，instance = new Singleton()操作非原子操作，它的伪代码可以写成：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">memory = allocate(); <span class="comment">// 2</span></span><br><span class="line">createInstance(memory); <span class="comment">// 3</span></span><br><span class="line">instance = memory; <span class="comment">// 4</span></span><br></pre></td></tr></table></figure>
+<p>我们分析这段代码，2处使用内存分配函数给要实例化的instance分配内存，memory作为分配内存的初始指针赋于memory变量，然后3处使用内存初始化函数给这块内存赋该对象的初始化值，然后4处把要返回的instance引用指向初始化完成的内存块指针memory。自此，1处代码可以将该instance返回。再然后线程退出同步代码块，释放类锁。</p>
+<p>假若我们对这段代码进行重排序，变成：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">memory = allocate(); <span class="comment">// 5</span></span><br><span class="line">instance = memory; <span class="comment">// 6</span></span><br><span class="line">createInstance(memory); <span class="comment">// 7</span></span><br></pre></td></tr></table></figure>
+<p>也就是对初始化内存和instance应用赋值进行了重排序。首先我们考虑这种重排序是否被允许。我们考虑这种重排序合法性时只需遵守上面提到的 <strong>as-if-serial</strong>，不难得知，单线程的串行语义不会因为这种重排序发生变化，因为先赋值instance引用，再初始化内存，代码退出时instance引用是初始化后的内存引用，可以正常使用。因此，这种重排序合法。</p>
+<p>在这种重排序合法的情况下，假设现在A和B两个线程同时执行这段代码，出现下面的情况：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">  线程A                        线程B</span><br><span class="line">memory = allocate();         </span><br><span class="line">													<span class="keyword">if</span>(instance == null) <span class="comment">// 第一次check</span></span><br><span class="line">instance = memory;</span><br><span class="line">createInstance(memory);</span><br></pre></td></tr></table></figure>
+<p>可见线程B在第一次进入instance为空判断的时候，发现instance其实已经被分配过内存了，因此if条件退出，直接拿到代码返回的instance实例，可这个instance并没有进行对象值初始化的过程！于是乎，B线程拿到了一个未经初始化的Singleton实例，这是一个危险的操作。</p>
+<p>因此，volatile变量禁止指令重排序就起到了至关重要的作用：它通过低级别代码中插入内存屏障的操作，使得上面的重排序不存在，使得这块代码变得安全。单例代码变成：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Singleton</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">volatile</span> Singleton instance = <span class="keyword">null</span>; <span class="comment">// 仅仅加了volatile关键字</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">Singleton</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Singleton <span class="title">getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">      <span class="keyword">if</span>(instacne == <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">synchronized</span>(Singleton.class) &#123;</span><br><span class="line">          <span class="keyword">if</span> (instance == <span class="keyword">null</span>) &#123;</span><br><span class="line">            instance = <span class="keyword">new</span> Singleton(); </span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">return</span> instance;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>一些场景下，happens-before规则会涉及到禁止指令重排序来实现，但由这个例子可见，在不满足happens-before规则的语义下，禁止指令重排序还是有它单独的作用的。</p>
+<p>另外，volatile在多线程语义中，我们根据JMM的可见性保证和happens-before规则，可以使用他来进行CAS操作：</p>
+<p>CAS从根本上是由CPU的原子操作支持的。JVM通过调用本地汇编代码实现低级别语义。volatile的可见性保证在这个过程中其实只起到一个作用：加速CAS过程。不难设想，线程在读取一个值进行比较修改，若此值一直是过期的值，该线程实际上处于一个忙循环中，CAS效率得不到保证。而volatile保证每次内存的更新都会穿透到其他线程工作内存，避免了这种“空转”。那么若不使用volatile呢，至于缓存旧值被刷新到主存中需要多久的时间，这取决于硬件和操作系统的实现，不同的处理器和操作系统可能有不同的缓存一致性协议和机制，例如在 x86 架构下，一般情况下写操作会立即刷新到缓存行中，但是需要一定时间才会刷新到主存中。不过，这个时间一般是非常短的。</p>
+<p>幸运的是，大部分程序员不需要花费什么心力在这种细节上。通用的多线程编程，我们都使用更高级别的封装，如JUC下的同步器来进行工作。一般的，我们只需要知道：</p>
+<ol>
+<li>happens-before前提和它带来的JMM语义保证，用这个工具来推断线程内存行为，往往用来得到多线程下不确定性中的确定性；</li>
+<li>volatile的禁止指令重排，它在某些场景下有它独特的作用，比如上面的双重检查单例模式</li>
+</ol>
+<p>正确认识指令重排的因果和Java代码背后更低一级的语义，才能正确感受到JMM中定义那些规则和内存语义保证的意义。仅仅想从代码中反推其中的含义，往往产生一种代价高昂的幻觉。</p>
+<p>说了这么多，JMM如何理性和正确地使用，我们可以从JUC包中AQS(AbstractQueuedSynchronizer)的设计中窥见一些…(TODO)</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>感谢充值: )</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>Donate</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/money.png" alt="Emitor WeChat Pay">
+        <p>WeChat Pay</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/02/03/研究CompletableFuture/" rel="next" title="研究CompletableFuture">
+                <i class="fa fa-chevron-left"></i> 研究CompletableFuture
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2022/01/23/AQS-research/" rel="prev" title="研究Doug Lea的AQS">
+                研究Doug Lea的AQS <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="https://avatars1.githubusercontent.com/u/19459779?s=460&v=4" alt="Emitor">
+            
+              <p class="site-author-name" itemprop="name">Emitor</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">tags</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#研究JMM"><span class="nav-number">1.</span> <span class="nav-text">研究JMM</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#balabala"><span class="nav-number">1.0.1.</span> <span class="nav-text">balabala</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#聊聊JMM"><span class="nav-number">1.0.2.</span> <span class="nav-text">聊聊JMM</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#重排序"><span class="nav-number">1.0.3.</span> <span class="nav-text">重排序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#volatile"><span class="nav-number">1.0.4.</span> <span class="nav-text">volatile</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#happens-before"><span class="nav-number">1.0.5.</span> <span class="nav-text">happens-before</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#串联一下"><span class="nav-number">1.0.6.</span> <span class="nav-text">串联一下</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Emitor</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

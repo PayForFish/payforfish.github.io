@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang>
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/sa.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/sa.png?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Java,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="研究Doug Lea的AQSbalabala正确认识指令重排的因果和Java代码背后更低一级的语义，才能正确感受到JMM中定义那些规则和内存语义保证的意义。仅仅想从代码中反推其中的含义，往往产生一种代价高昂的幻觉。 我们试试是否能从Doug Lea和他的意见提供者们设计的AQS以及对应的锁实现中，找出一些具体的使用呢。">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="研究Doug Lea的AQS">
+<meta property="og:url" content="http://yoursite.com/2022/01/23/AQS-research/index.html">
+<meta property="og:site_name" content="Emitor&#39;s blog">
+<meta property="og:description" content="研究Doug Lea的AQSbalabala正确认识指令重排的因果和Java代码背后更低一级的语义，才能正确感受到JMM中定义那些规则和内存语义保证的意义。仅仅想从代码中反推其中的含义，往往产生一种代价高昂的幻觉。 我们试试是否能从Doug Lea和他的意见提供者们设计的AQS以及对应的锁实现中，找出一些具体的使用呢。">
+<meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2023-04-19T15:09:02.528Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="研究Doug Lea的AQS">
+<meta name="twitter:description" content="研究Doug Lea的AQSbalabala正确认识指令重排的因果和Java代码背后更低一级的语义，才能正确感受到JMM中定义那些规则和内存语义保证的意义。仅仅想从代码中反推其中的含义，往往产生一种代价高昂的幻觉。 我们试试是否能从Doug Lea和他的意见提供者们设计的AQS以及对应的锁实现中，找出一些具体的使用呢。">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2022/01/23/AQS-research/">
+
+
+
+
+
+  <title>研究Doug Lea的AQS | Emitor's blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="default">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Emitor's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2022/01/23/AQS-research/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Emitor">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="https://avatars1.githubusercontent.com/u/19459779?s=460&v=4">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emitor's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">研究Doug Lea的AQS</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2022-01-23T15:48:04+08:00">
+                2022-01-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="研究Doug-Lea的AQS"><a href="#研究Doug-Lea的AQS" class="headerlink" title="研究Doug Lea的AQS"></a>研究Doug Lea的AQS</h1><h3 id="balabala"><a href="#balabala" class="headerlink" title="balabala"></a>balabala</h3><p>正确认识指令重排的因果和Java代码背后更低一级的语义，才能正确感受到JMM中定义那些规则和内存语义保证的意义。仅仅想从代码中反推其中的含义，往往产生一种代价高昂的幻觉。</p>
+<p>我们试试是否能从Doug Lea和他的意见提供者们设计的AQS以及对应的锁实现中，找出一些具体的使用呢。</p>
+<hr>
+<a id="more"></a>
+<h3 id="AQS的顶层设计-CLH"><a href="#AQS的顶层设计-CLH" class="headerlink" title="AQS的顶层设计-CLH"></a>AQS的顶层设计-CLH</h3><p>CLH是一种自旋锁算法，将资源的竞争者抽象成一个个的Node并将其放入一个双向队列中，实现竞态下资源有序的获取与释放。算法本身不难理解， 难的是实现的细节和临界区代码的处理。</p>
+<p>AQS(AbstractQueuedSynchronizer)作为大师Doug Lea为所有Javaer提供的并发编程工具的地基工程，它实际上只提供了在竞态下的同步语义。具体的，它使用CLH算法将竞争者Thread抽象成一个个的Node，他们在竞争资源时为保证只有一个Node获得资源，将其余的竞争者首尾相接组成一个等待者队列。需要重点关注的过程是：多个线程进入临界区和资源获得者释放资源。</p>
+<hr>
+<h3 id="从ReentrantLock切入"><a href="#从ReentrantLock切入" class="headerlink" title="从ReentrantLock切入"></a>从ReentrantLock切入</h3><p>ReentrantLock是JUC下比较常使用的同步工具类，它具体有公平锁和非公平锁两种实现，隐含地，它需要支持可重入。可以通过它的实现看看AQS同步器的具体工作过程。</p>
+<p>点开ReentrantLock的代码实现可以看到有几个重要的点：</p>
+<ol>
+<li>ReentrantLock的实现符合AQS定义中的子类实现方式：一个类需要AQS的同步语义时(比如实现一个锁)，在内部定义一个静态内部类(如Sync)，这个静态内部类继承抽象类AQS，继承里面最复杂的同步语义代码，仅仅需要重写几个“业务相关”的方法，定义这个同步器的行为方式；</li>
+<li>ReentrantLock内部不光实现了1中所说的Sync子类，还实现了两个不同的类再次作为Sync的子类，作为真正的锁实现：公平锁与非公平锁</li>
+</ol>
+<p>先看公平锁的上锁与释放锁：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ReentrantLock中lock的方法定义</span></span><br><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (!initialTryLock())</span><br><span class="line">                acquire(<span class="number">1</span>); <span class="comment">// AQS类中定义的抽象方法，需要子类实现tryAcquire, 该方法返回false再进入AQS中复杂的同步代码</span></span><br><span class="line">        &#125;</span><br><span class="line"><span class="comment">// initialTryLock方法实现</span></span><br><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">initialTryLock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            Thread current = Thread.currentThread();</span><br><span class="line">            <span class="keyword">int</span> c = getState(); <span class="comment">// 1</span></span><br><span class="line">            <span class="keyword">if</span> (c == <span class="number">0</span>) &#123; <span class="comment">// 2</span></span><br><span class="line">                <span class="keyword">if</span> (!hasQueuedThreads() &amp;&amp; compareAndSetState(<span class="number">0</span>, <span class="number">1</span>)) &#123; <span class="comment">// 3</span></span><br><span class="line">                    setExclusiveOwnerThread(current); <span class="comment">// 4</span></span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (getExclusiveOwnerThread() == current) &#123;</span><br><span class="line">                <span class="keyword">if</span> (++c &lt; <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">"Maximum lock count exceeded"</span>);</span><br><span class="line">                setState(c);</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>基于此JDK版本的实现，initialTryLock()方法是用来避免加速锁的lock过程的：避免线程在竞争不严重的时候频繁进入AQS同步语义的代码中。为什么加速了，可以在看AQS具体代码时得到结论。1处getState()是继承AQS中的，state变量被volatile修饰。在这里的方法实现中，state的volatile定义其实只起到一个作用：加速后续3处CAS的速度，并没有使用volatile提供的JMM happens-before语义和禁止指令重排。究其原因，其实就是这里的compareAndSetState()调用了本地汇编代码，利用平台相关的CPU级别的语义进行原子化操作。CAS state变量具有全进程惟一性，使得state变量的状态具有全局一致性。因此，即使AQS中state并未使用volatile修饰，最严重的后果就是多线程下等待者会一直不刷新全局state最新值（其已不是0），使用工作内存中0值state变量从而满足2处判断进入3处代码。而3处的CAS代码永远不会满足，因此只是代码实现的效率不高，并不会出现BUG。</p>
+<p>那往后看呢，代码进入ReentrantLock实现的tryAcquire方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryAcquire</span><span class="params">(<span class="keyword">int</span> acquires)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (getState() == <span class="number">0</span> &amp;&amp; !hasQueuedPredecessors() &amp;&amp;</span><br><span class="line">                compareAndSetState(<span class="number">0</span>, acquires)) &#123; <span class="comment">// 6</span></span><br><span class="line">                setExclusiveOwnerThread(Thread.currentThread());</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>该段代码同样未使用到volatile语义中的happens-before规则和禁止指令重排。原因仍然是CAS操作具有原子性，它作为6处代码短路判断的最后一道保证，保证永远不会有两个线程在这里返回同样的结果。</p>
+<p>这里获取锁失败，代码执行到AQS代码中进行构造等待节点并加入CLH队列中。AQS中volatile state变量不再发挥作用，因此可见ReentrantLock的锁实现(非公平锁同样)不需要有volatile 提供的JMM happens-before语义和禁止指令重排假设。它仅仅使用到volatile的可见性来加速代码的运行效率，不是代码正确性的保证。但同样的，CAS本身既然是全局原子操作，就一定会有性能上的损失，比如锁住内存主线等指令的执行。因此volatile通过一种介于无锁和有锁之间的状态来平衡两者性能和功能，那么它保证的可见性依然非常重要。</p>
+<p>至此，我们研究volatile和其他JMM的happens-before规则告一段落，这种JMM的有序性特性有它的特殊用途，但实际使用场景确实比较少。大多数情况下，甚至仅仅限于语言特性讨论的范畴而已。JAVA并发编程中最主要的部分仍然是线程间内存通讯以及全局原子操作的搭配，而禁止指令重排和有序性保证，既不提供内存间通信的绝对保障，更不具有原子性。他们像数据结构和代码逻辑一样，仅仅起到boost的作用。所以抛开代码实现不谈，生搬硬套得到一个貌似可信的结论只会产生更高的代价。</p>
+<p>多线程编程中，最重要的是有一个全局兜底的原子性操作（这里的CAS）保障，否则永远无法达到并发安全编程。另外，使用其他的优化手段来加速代码流程，避免CAS的乐观锁属性退化成悲观锁性能。这也是AQS实现的精髓。</p>
+<hr>
+<h3 id="CLH队列设计–减少非必要的全局CAS竞争"><a href="#CLH队列设计–减少非必要的全局CAS竞争" class="headerlink" title="CLH队列设计–减少非必要的全局CAS竞争"></a>CLH队列设计–减少非必要的全局CAS竞争</h3><p>具体的锁实现，比如ReentrantLock，进行了一系列的try操作，尝试是否可以跳过竞态条件直接完成锁的获取或者释放，以此来避免代码走到AQS中，构造等待节点并进行CLH算法。这加速了锁的性能，但若try操作全部失败，具体的CLH算法或者说AQS是如何进行处理的。它又进行了哪些优化手段来加速呢？</p>
+<p>首先假设一个线程持有了一把ReentrantLock锁示例的lock()，并且短期执行unlock()，这时我们观察另一个线程进入lock()的行为：</p>
+<ol>
+<li><p>上面的initialTryLock和tryAcquire全部失败，因为全局state不为0，代码直接走到AQS中的tryAcquire()</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">int</span> <span class="title">acquire</span><span class="params">(Node node, <span class="keyword">int</span> arg, <span class="keyword">boolean</span> shared, <span class="keyword">boolean</span> interruptible, <span class="keyword">boolean</span> timed, <span class="keyword">long</span> time)</span></span>&#123;...&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码的核心是执行一个死循环，并执行下面的代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (;;) &#123;</span><br><span class="line">            <span class="keyword">if</span> (!first &amp;&amp; (pred = (node == <span class="keyword">null</span>) ? <span class="keyword">null</span> : node.prev) != <span class="keyword">null</span> &amp;&amp;</span><br><span class="line">                !(first = (head == pred))) &#123;</span><br><span class="line">                <span class="keyword">if</span> (pred.status &lt; <span class="number">0</span>) &#123;</span><br><span class="line">                    cleanQueue();           <span class="comment">// predecessor cancelled</span></span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125; <span class="keyword">else</span> <span class="keyword">if</span> (pred.prev == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    Thread.onSpinWait();    <span class="comment">// ensure serialization</span></span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (first || pred == <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">boolean</span> acquired;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    <span class="keyword">if</span> (shared)</span><br><span class="line">                        acquired = (tryAcquireShared(arg) &gt;= <span class="number">0</span>);</span><br><span class="line">                    <span class="keyword">else</span></span><br><span class="line">                        acquired = tryAcquire(arg);</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Throwable ex) &#123;</span><br><span class="line">                    cancelAcquire(node, interrupted, <span class="keyword">false</span>);</span><br><span class="line">                    <span class="keyword">throw</span> ex;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (acquired) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (first) &#123;</span><br><span class="line">                        node.prev = <span class="keyword">null</span>;</span><br><span class="line">                        head = node;</span><br><span class="line">                        pred.next = <span class="keyword">null</span>;</span><br><span class="line">                        node.waiter = <span class="keyword">null</span>;</span><br><span class="line">                        <span class="keyword">if</span> (shared)</span><br><span class="line">                            signalNextIfShared(node);</span><br><span class="line">                        <span class="keyword">if</span> (interrupted)</span><br><span class="line">                            current.interrupt();</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (node == <span class="keyword">null</span>) &#123;                 <span class="comment">// allocate; retry before enqueue</span></span><br><span class="line">                <span class="keyword">if</span> (shared)</span><br><span class="line">                    node = <span class="keyword">new</span> SharedNode();</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                    node = <span class="keyword">new</span> ExclusiveNode();</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (pred == <span class="keyword">null</span>) &#123;          <span class="comment">// try to enqueue</span></span><br><span class="line">                node.waiter = current;</span><br><span class="line">                Node t = tail;</span><br><span class="line">                node.setPrevRelaxed(t);         <span class="comment">// avoid unnecessary fence</span></span><br><span class="line">                <span class="keyword">if</span> (t == <span class="keyword">null</span>)</span><br><span class="line">                    tryInitializeHead();</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (!casTail(t, node))</span><br><span class="line">                    node.setPrevRelaxed(<span class="keyword">null</span>);  <span class="comment">// back out</span></span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                    t.next = node;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (first &amp;&amp; spins != <span class="number">0</span>) &#123;</span><br><span class="line">                --spins;                        <span class="comment">// reduce unfairness on rewaits</span></span><br><span class="line">                Thread.onSpinWait();</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (node.status == <span class="number">0</span>) &#123;</span><br><span class="line">                node.status = WAITING;          <span class="comment">// enable signal and recheck</span></span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">long</span> nanos;</span><br><span class="line">                spins = postSpins = (<span class="keyword">byte</span>)((postSpins &lt;&lt; <span class="number">1</span>) | <span class="number">1</span>);</span><br><span class="line">                <span class="keyword">if</span> (!timed)</span><br><span class="line">                    LockSupport.park(<span class="keyword">this</span>);</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> ((nanos = time - System.nanoTime()) &gt; <span class="number">0L</span>)</span><br><span class="line">                    LockSupport.parkNanos(<span class="keyword">this</span>, nanos);</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                node.clearStatus();</span><br><span class="line">                <span class="keyword">if</span> ((interrupted |= Thread.interrupted()) &amp;&amp; interruptible)</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>第二个线程开始执行for循环中的代码，开始第一次for循环执行：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (node == <span class="keyword">null</span>) &#123;             </span><br><span class="line">    <span class="keyword">if</span> (shared)</span><br><span class="line">        node = <span class="keyword">new</span> SharedNode();</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        node = <span class="keyword">new</span> ExclusiveNode();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这一步构造一个等待节点，绑定到当前线程中，即该节点的字段waiter是Thread.currentThread()。</p>
+</li>
+<li><p>代码执行第二次for循环，代码执行：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"> <span class="keyword">else</span> <span class="keyword">if</span> (pred == <span class="keyword">null</span>) &#123;          </span><br><span class="line">    node.waiter = current;</span><br><span class="line">    Node t = tail;</span><br><span class="line">    node.setPrevRelaxed(t);      </span><br><span class="line">    <span class="keyword">if</span> (t == <span class="keyword">null</span>)</span><br><span class="line">        tryInitializeHead();</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (!casTail(t, node))</span><br><span class="line">        node.setPrevRelaxed(<span class="keyword">null</span>); </span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        t.next = node;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>构造当前CLH队列的头结点和当前节点的前驱节点。注意此时变量pred仍然是null，CLH队列的tail和head为同一个空Node。</p>
+</li>
+<li><p>代码第三次循环执行：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"> <span class="keyword">else</span> <span class="keyword">if</span> (pred == <span class="keyword">null</span>) &#123;          </span><br><span class="line">    node.waiter = current;</span><br><span class="line">    Node t = tail;</span><br><span class="line">    node.setPrevRelaxed(t);      </span><br><span class="line">    <span class="keyword">if</span> (t == <span class="keyword">null</span>)</span><br><span class="line">        tryInitializeHead();</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (!casTail(t, node))  <span class="comment">// 1</span></span><br><span class="line">        node.setPrevRelaxed(<span class="keyword">null</span>); </span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        t.next = node;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>第三次循环在代码1处讲CLH的tail节点变成当前第二个线程的Node，因此此时CLH中，head为空Node，tail指针指向当前第二个线程的那个Node。</p>
+</li>
+<li><p>代码进入第四次循环：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (node.status == <span class="number">0</span>) &#123;</span><br><span class="line">    node.status = WAITING;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>由于第二个线程构造的Node中status为初始化0，这里将其status设置为WAITING。</p>
+</li>
+<li><p>代码进入第五次循环：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">long</span> nanos;</span><br><span class="line">    spins = postSpins = (<span class="keyword">byte</span>)((postSpins &lt;&lt; <span class="number">1</span>) | <span class="number">1</span>);</span><br><span class="line">    <span class="keyword">if</span> (!timed)</span><br><span class="line">        LockSupport.park(<span class="keyword">this</span>); <span class="comment">// 2</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ((nanos = time - System.nanoTime()) &gt; <span class="number">0L</span>)</span><br><span class="line">        LockSupport.parkNanos(<span class="keyword">this</span>, nanos);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    node.clearStatus();</span><br><span class="line">    <span class="keyword">if</span> ((interrupted |= Thread.interrupted()) &amp;&amp; interruptible)</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里代码执行2处的park方法。注意传入的this参数是用来进行监控如jstack时使用，起到一个绑定监控对象作用，无特殊意义。</p>
+<p>至此，线程2已经被无限期挂起，进入Waiting线程态，等待其他线程主动唤醒或者中断。</p>
+</li>
+</ol>
+<p>不难想到，这里的等待其他线程唤醒就是线程1的unlock方法调用：</p>
+<p>线程1执行unlock的代码流程大致如下：</p>
+<ol>
+<li><p>执行unlock():</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    sync.release(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 代码进入AQS执行：</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">release</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (tryRelease(arg)) &#123; <span class="comment">// 1</span></span><br><span class="line">        signalNext(head); <span class="comment">// 2</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>分析1处代码调用：由于加锁的代码只有一个线程会成功，所以这里直接判断lock的持有线程是否是当前Thread即可，无锁调用。</p>
+<p>重点是2处调用，它起到上面说的唤醒作用：</p>
+</li>
+<li><p>唤醒下一个等待Node:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">signalNext</span><span class="params">(Node h)</span> </span>&#123;</span><br><span class="line">    Node s;</span><br><span class="line">    <span class="keyword">if</span> (h != <span class="keyword">null</span> &amp;&amp; (s = h.next) != <span class="keyword">null</span> &amp;&amp; s.status != <span class="number">0</span>) &#123; <span class="comment">// 3</span></span><br><span class="line">        s.getAndUnsetStatus(WAITING); <span class="comment">// 4</span></span><br><span class="line">        LockSupport.unpark(s.waiter); <span class="comment">// 5</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里3处的h为head，即之前构造的空Node，不绑定任何等待线程(waiter)。代码执行到4处，值得注意的是这里看上去设置了head的next节点（第二个线程Node）的status为WAITING，实际上方法中有逻辑将其status设置成0而不是WAITING的1。当代码执行到5处，之前被Park无限挂起的线程2得到唤醒，继续执行for循环中的代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (first || pred == <span class="keyword">null</span>) &#123;</span><br><span class="line">    <span class="keyword">boolean</span> acquired;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (shared)</span><br><span class="line">            acquired = (tryAcquireShared(arg) &gt;= <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            acquired = tryAcquire(arg);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable ex) &#123;</span><br><span class="line">        cancelAcquire(node, interrupted, <span class="keyword">false</span>);</span><br><span class="line">        <span class="keyword">throw</span> ex;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (acquired) &#123;</span><br><span class="line">        <span class="keyword">if</span> (first) &#123;</span><br><span class="line">            node.prev = <span class="keyword">null</span>;</span><br><span class="line">            head = node;</span><br><span class="line">            pred.next = <span class="keyword">null</span>;</span><br><span class="line">            node.waiter = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">if</span> (shared)</span><br><span class="line">                signalNextIfShared(node);</span><br><span class="line">            <span class="keyword">if</span> (interrupted)</span><br><span class="line">                current.interrupt();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>至此，线程2得到锁，代码得以继续执行。</p>
+</li>
+</ol>
+<p>综上，CLH作为自旋算法，AQS使用它来实现同步语义有几点值得注意的地方：</p>
+<ol>
+<li>它不是无限自旋。即等待线程不是无限自旋等待锁，它大部分时间是被挂起并等待持有资源的线程去唤醒它；</li>
+<li>等待线程被无限挂起等待信号唤醒，实际上唤醒动作由持有锁的线程在释放锁时进行，由于CLH的FIFO队列结构，只有一个Head节点的后驱节点会被唤醒，继而尝试CAS获取锁，并成功获取锁；</li>
+<li>AQS中的代码加入了一些小优化，比如字节对齐，短暂的onSpinWait等</li>
+</ol>
+<p>以上，是AQS使用CLH算法实现竞态下资源竞争的大致实现过程。它不难懂，但要是自己手动仿写一个AQS的话会发现有很多细节需要处理，否则会出现意想不到的Bug，幸运的是Doug Lea已经处理好这一切。在JUC里，有很多使用AQS封装实现的同步工具。如若这些工具仍不满足我们的需求，实际上可以通过继承AQS，并使用其中的同步方法做临界区处理，从而非常容易地实现高效、安全的自定义多线程同步工具。这是AQS更高一层的所具有的意义。好像就是在说：站在巨人的肩膀上，不要重复造轮子。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>感谢充值: )</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>Donate</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/money.png" alt="Emitor WeChat Pay">
+        <p>WeChat Pay</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2022/01/13/JMM-research/" rel="next" title="研究JMM">
+                <i class="fa fa-chevron-left"></i> 研究JMM
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="https://avatars1.githubusercontent.com/u/19459779?s=460&v=4" alt="Emitor">
+            
+              <p class="site-author-name" itemprop="name">Emitor</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">tags</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#研究Doug-Lea的AQS"><span class="nav-number">1.</span> <span class="nav-text">研究Doug Lea的AQS</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#balabala"><span class="nav-number">1.0.1.</span> <span class="nav-text">balabala</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AQS的顶层设计-CLH"><span class="nav-number">1.0.2.</span> <span class="nav-text">AQS的顶层设计-CLH</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#从ReentrantLock切入"><span class="nav-number">1.0.3.</span> <span class="nav-text">从ReentrantLock切入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CLH队列设计–减少非必要的全局CAS竞争"><span class="nav-number">1.0.4.</span> <span class="nav-text">CLH队列设计–减少非必要的全局CAS竞争</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Emitor</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
